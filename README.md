@@ -128,7 +128,9 @@ Explore the sample by signing in, adding items to the To Do list, removing the u
 
 ## How To Deploy This Sample to Azure
 
-Coming soon.
+Coming soon.  
+
+The TodoListService\DAL\DbTokenCache.cs implementation is a sql localdb file backed configuration and therefore does not support azure deployment where multi-instance service plans are enabled. For those scenarios use a multi-instance supported TokenCache solution such as an azure redis cache based TokenCache implementation like the one found in [this](https://www.nuget.org/packages/MyUsrn.Dnx.Core/) nuget package.  
 
 ## About The Code
 
