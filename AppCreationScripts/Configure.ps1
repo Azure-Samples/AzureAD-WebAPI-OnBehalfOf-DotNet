@@ -153,7 +153,7 @@ Function GetRequiredPermissions([string] $applicationDisplayName, [string] $requ
     }
     
     # $sp.AppRoles | Select Id,AdminConsentDisplayName,Value: To see the list of all the Application permissions for the application
-    if ($requiredDelegatedPermissions)
+    if ($requiredApplicationPermissions)
     {
         AddResourcePermission $requiredAccess -exposedPermissions $sp.AppRoles -requiredAccesses $requiredApplicationPermissions -permissionType "Role"
     }
