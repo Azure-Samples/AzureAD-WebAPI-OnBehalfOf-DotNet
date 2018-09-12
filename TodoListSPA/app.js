@@ -3,11 +3,12 @@
 config.callback = loggedin;
 var authenticationContext = new AuthenticationContext(config);
 
+if (authenticationContext.isCallback(window.location.hash)) {
+    authenticationContext.handleWindowCallback();
+}
+
 if (!config.popUp) {
-    if (authenticationContext.isCallback(window.location.hash)) {
-        authenticationContext.handleWindowCallback();
-    }
-    else {
+    if (!authenticationContext.isCallback(window.location.hash)) {
         var user = authenticationContext.getCachedUser();
         if (user && window.parent === window && !window.opener) {
             // Display the user
