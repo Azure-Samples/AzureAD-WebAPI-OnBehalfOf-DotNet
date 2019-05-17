@@ -18,7 +18,9 @@ namespace TodoListService
                 new WindowsAzureActiveDirectoryBearerAuthenticationOptions
                 {
                     Tenant = ConfigurationManager.AppSettings["ida:Tenant"],
-                    TokenValidationParameters = new TokenValidationParameters{ SaveSigninToken = true, ValidAudience= ConfigurationManager.AppSettings["ida:Audience"] }
+					//We set SaveSigninToken to true, to be able to retrieve the bearer token using the code: ClaimsPrincipal.Current.Identities.First().BootstrapContext
+					//This flag is mandatory for this flow to work
+					TokenValidationParameters = new TokenValidationParameters{ SaveSigninToken = true, ValidAudience= ConfigurationManager.AppSettings["ida:Audience"] }
                 });
         }
     }
