@@ -1,64 +1,33 @@
-'use strict';
+﻿'use strict';
 
-config.callback = loggedin;
-var authenticationContext = new AuthenticationContext(config);
+const clientApplication = new Msal.UserAgentApplication(config);
 
-if (!config.popUp) {
-    if (authenticationContext.isCallback(window.location.hash)) {
-        authenticationContext.handleWindowCallback();
-    }
-    else {
-        var user = authenticationContext.getCachedUser();
-        if (user && window.parent === window && !window.opener) {
-            // Display the user
-            displayUserAndShowSignOutButton(user);
-
-            // Call the protected API to show the content of the todo list
-            acquireAnAccessTokenAndCallTheProtectedService();
-        }
-    }
+const loginRequest = {
+	scopes: [config.webApiScope],
+	prompt: "select_account",
 }
 
+const accessTokenRequest = {
+	scopes: [config.webApiScope]
+}
 
 /**
  * Entry point: called when the user clicks on the "Display the todo list" button
  */
 function displayTodoList() {
-    var user = authenticationContext.getCachedUser();
-    if (user) {
-        onLogin(null, user);
-    }
-    else {
-        showProgress("Getting user's identity");
-        authenticationContext.login();
-    }
-}
+	var account = clientApplication.getAccount();
+	if (account) {
+		onLogin(null, account);
+	}
+	else {
+		showProgress("Getting user's identity");
 
-/**
- * Entry point: called when the user clicks on the "Logout" button
- */
-function signOut() {
-    authenticationContext.logOut();
-}
-
-/**
- * Callback, triggered after authentication.login() got called and the login interaction
- * with the user happened.
- * @param {string} errorDescription - Description of the error (as returned from the STS)
- * @param {string} idToken - Id token in case of success
- * @param {string} error - Error code
- */
-function loggedin(errorDescription, idToken, error) {
-    if (error) {
-        showError(errorDescription, error);
-    }
-    else {
-        if (config.popUp) {
-            authenticationContext.getUser(onLogin);
-        }
-        // The other case (redirect) is processed in the section guarded by the 
-        // authenticationContext.isCallback(window.location.hash) condition (see above)
-    }
+		clientApplication.loginPopup(loginRequest).then(function (loginResponse) {
+			if (loginResponse.account) {
+				onLogin(null, loginResponse.account);
+			}
+		});
+	}
 }
 
 /**
@@ -68,16 +37,16 @@ function loggedin(errorDescription, idToken, error) {
  * @param {any} user - Data about the logged-in user
  */
 function onLogin(error, user) {
-    if (user) {
-        // Show the information about the user
-        displayUserAndShowSignOutButton(user);
+	if (user) {
+		// Show the information about the user
+		displayUserAndShowSignOutButton(user);
 
-        // Call the protected API to show the content of the todo list
-        acquireAnAccessTokenAndCallTheProtectedService();
-    }
-    if (error) {
-        showError("login", error);
-    }
+		// Call the protected API to show the content of the todo list
+		acquireAnAccessTokenAndCallTheProtectedService();
+	}
+	if (error) {
+		showError("login", error);
+	}
 }
 
 /**
@@ -85,13 +54,20 @@ function onLogin(error, user) {
  * @param {any} user - Data about the logged-in user
  */
 function displayUserAndShowSignOutButton(user) {
-    // Show the user info.
-    var userInfoElement = document.getElementById("userInfo");
-    userInfoElement.parentElement.classList.remove("hidden");
-    userInfoElement.innerHTML = JSON.stringify(user, null, 4);
+	// Show the user info.
+	var userInfoElement = document.getElementById("userInfo");
+	userInfoElement.parentElement.classList.remove("hidden");
+	userInfoElement.innerHTML = JSON.stringify(user, null, 4);
 
-    // Show the Sign-Out button
-    document.getElementById("signOutButton").classList.remove("hidden");
+	// Show the Sign-Out button
+	document.getElementById("signOutButton").classList.remove("hidden");
+}
+
+/**
+ * Entry point: called when the user clicks on the "Logout" button
+ */
+function signOut() {
+	clientApplication.logout();
 }
 
 /**
@@ -100,20 +76,24 @@ function displayUserAndShowSignOutButton(user) {
  * acquire token with one of the UI-ed functions acquireTokenPopup or acquireTokenRedirect
  */
 function acquireAnAccessTokenAndCallTheProtectedService() {
-    showProgress("acquiring an access token for the Web API");
-    authenticationContext.acquireToken(webApiConfig.resourceId, function (errorDesc, token, error) {
-        if (error) {
-            if (config.popUp) {
-                authenticationContext.acquireTokenPopup(webApiConfig.resourceId, null, null, onAccessToken);
-            }
-            else {
-                authenticationContext.acquireTokenRedirect(webApiConfig.resourceId, null, null);
-            }
-        }
-        else {
-            onAccessToken(errorDesc, token, error);
-        }
-    });
+	showProgress("acquiring an access token for the Web API");
+
+	clientApplication.acquireTokenSilent(accessTokenRequest)
+		.then(response => {
+			onAccessToken(null, response.accessToken, null);
+		})
+		.catch(err => {
+			if (err.name === "InteractionRequiredAuthError" || err.errorCode == "login_required") {
+				clientApplication.acquireTokenPopup(accessTokenRequest).then(
+					function (response) {
+						onAccessToken(null, response.accessToken, null);
+					}).catch(function (error) {
+						console.log(error);
+					});
+			} else {
+				onAccessToken(err.name, null, err.errorMessage)
+			}
+		});
 }
 
 /**
@@ -123,13 +103,13 @@ function acquireAnAccessTokenAndCallTheProtectedService() {
  * @param {string} error - Error code from the STS
  */
 function onAccessToken(errorDesc, token, error) {
-    if (error) {
-        showError("acquireToken", error);
-    }
-    if (token) {
-        showProgress("calling the Web API with the access token");
-        callServiceWithToken(token, webApiConfig.resourceBaseAddress + "api/todolist");
-    }
+	if (error) {
+		showError("acquireToken", error);
+	}
+	if (token) {
+		showProgress("calling the Web API with the access token");
+		callServiceWithToken(token, webApiConfig.resourceBaseAddress + "api/todolist");
+	}
 }
 
 /**
@@ -139,63 +119,62 @@ function onAccessToken(errorDesc, token, error) {
  * @param {string} endpoint - endpoint to the Web API to call
  */
 function callServiceWithToken(token, endpoint) {
-    // Header won't work in IE, but you could replace it with a call to AJAX JQuery for instance.
-    var headers = new Headers();
-    var bearer = "Bearer " + token;
-    headers.append("Authorization", bearer);
-    var options = {
-        method: "GET",
-        headers: headers
-    };
+	// Header won't work in IE, but you could replace it with a call to AJAX JQuery for instance.
+	var headers = new Headers();
+	var bearer = "Bearer " + token;
+	headers.append("Authorization", bearer);
+	var options = {
+		method: "GET",
+		headers: headers
+	};
 
-    // Note that fetch API is not available in all browsers
-    fetch(endpoint, options)
-        .then(function (response) {
-            var contentType = response.headers.get("content-type");
-            if (response.status === 200 && contentType && contentType.indexOf("application/json") !== -1) {
-                // Case where we got the content from the API (as JSon)
-                response.json()
-                    .then(function (data) {
-                        // Display response in the page
-                        showProgress("");
-                        showAPIResponse(data, token);
-                    })
-                    .catch(function (error) {
-                        showError(endpoint, error);
-                    });
-            } else if (response.status === 403 && contentType && contentType.indexOf("text/plain; charset=utf-8") !== -1) {
-                // Claim Challenge: Case where the TotoListService requests that the user presents additional claims, (for instance two factors authentication).
-                // We then need another round of UI interaction hence the calls to acquireTokenPopup or acquireTokenRedirect
-                response.text()
-                    .then(function (data) {
-                        // Display response in the page
-                        showProgress("Requires additional claims: " + data);
-                        var claims = data;
-                        if (config.popUp) {
-                            authenticationContext.acquireTokenPopup(webApiConfig.resourceId, null, claims, onAccessToken);
-                        }
-                        else {
-                            authenticationContext.acquireTokenRedirect(webApiConfig.resourceId, null, claims);
-                        }
-                    })
-                    .catch(function (error) {
-                        showError(endpoint, error);
-                    });
-            } else {
-                // Other cases than 202 with JSon content, or 403 with text content. We suppose this is some Json content.
-                response.text()
-                    .then(function (data) {
-                        // Display response in the page
-                        showError(endpoint, data);
-                    })
-                    .catch(function (error) {
-                        showError(endpoint, error);
-                    });
-            }
-        })
-        .catch(function (error) {
-            showError(endpoint, error);
-        });
+	// Note that fetch API is not available in all browsers
+	fetch(endpoint, options)
+		.then(function (response) {
+			var contentType = response.headers.get("content-type");
+			if (response.status === 200 && contentType && contentType.indexOf("application/json") !== -1) {
+				// Case where we got the content from the API (as JSon)
+				response.json()
+					.then(function (data) {
+						// Display response in the page
+						showProgress("");
+						showAPIResponse(data, token);
+					})
+					.catch(function (error) {
+						showError(endpoint, error);
+					});
+			} else if (response.status === 403 && contentType && contentType.indexOf("text/plain; charset=utf-8") !== -1) {
+				// Claim Challenge: Case where the TotoListService requests that the user presents additional claims, (for instance two factors authentication).
+				// We then need another round of UI interaction hence the calls to acquireTokenPopup or acquireTokenRedirect
+				response.text()
+					.then(function (data) {
+						// Display response in the page
+						showProgress("Requires additional claims: " + data);
+						var claims = data;
+						clientApplication.acquireTokenPopup(claims).then(function (response) {
+							onAccessToken(null, response.accessToken, null);
+						}).catch(function (error) {
+							console.log(error);
+						});
+					})
+					.catch(function (error) {
+						showError(endpoint, error);
+					});
+			} else {
+				// Other cases than 202 with JSon content, or 403 with text content. We suppose this is some Json content.
+				response.text()
+					.then(function (data) {
+						// Display response in the page
+						showError(endpoint, data);
+					})
+					.catch(function (error) {
+						showError(endpoint, error);
+					});
+			}
+		})
+		.catch(function (error) {
+			showError(endpoint, error);
+		});
 }
 
 /**
@@ -204,10 +183,10 @@ function callServiceWithToken(token, endpoint) {
  * @param {any} token - the access token
  */
 function showAPIResponse(data, token) {
-    var responseElement = document.getElementById("apiResponse");
-    responseElement.parentElement.classList.remove("hidden");
-    console.log(data);
-    responseElement.innerHTML = JSON.stringify(data, null, 4);
+	var responseElement = document.getElementById("apiResponse");
+	responseElement.parentElement.classList.remove("hidden");
+	console.log(data);
+	responseElement.innerHTML = JSON.stringify(data, null, 4);
 }
 
 /**
@@ -216,13 +195,13 @@ function showAPIResponse(data, token) {
  * @param {any} error - the error string
  */
 function showError(endpoint, error) {
-    var errorElement = document.getElementById("errorMessage");
-    console.error(error);
-    var formattedError = JSON.stringify(error, null, 4);
-    if (formattedError.length < 3) {
-        formattedError = error;
-    }
-    errorElement.innerHTML = "Error calling " + endpoint + ": " + formattedError;
+	var errorElement = document.getElementById("errorMessage");
+	console.error(error);
+	var formattedError = JSON.stringify(error, null, 4);
+	if (formattedError.length < 3) {
+		formattedError = error;
+	}
+	errorElement.innerHTML = "Error calling " + endpoint + ": " + formattedError;
 }
 
 /**
@@ -230,6 +209,6 @@ function showError(endpoint, error) {
  * @param {string} text - the text to display
  */
 function showProgress(text) {
-    var errorElement = document.getElementById("progressMessage");
-    errorElement.innerText = text;
+	var errorElement = document.getElementById("progressMessage");
+	errorElement.innerText = text;
 }

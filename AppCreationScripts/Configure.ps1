@@ -225,7 +225,9 @@ Function ConfigureApplications
    # Create the client AAD application
    Write-Host "Creating the AAD appplication (TodoListClient-OBO)"
    $clientAadApplication = New-AzureADApplication -DisplayName "TodoListClient-OBO" `
-                                                  -ReplyUrls "https://TodoListClient-OBO" `
+                                                  -HomePage "https://localhost:44377" `
+                                                  -ReplyUrls @("urn:ietf:wg:oauth:2.0:oob", "https://localhost:44377") `
+                                                  -Oauth2AllowImplicitFlow $true `
                                                   -PublicClient $True
 
 
@@ -245,38 +247,11 @@ Function ConfigureApplications
    $requiredResourcesAccess.Add($requiredPermissions)
    Set-AzureADApplication -ObjectId $clientAadApplication.ObjectId -RequiredResourceAccess $requiredResourcesAccess
    Write-Host "Granted."
-   # Create the spa AAD application
-   Write-Host "Creating the AAD appplication (TodoListSPA-OBO)"
-   $spaAadApplication = New-AzureADApplication -DisplayName "TodoListSPA-OBO" `
-                                               -HomePage "http://localhost:16969/" `
-                                               -ReplyUrls "http://localhost:16969/" `
-                                               -IdentifierUris "https://$tenantName/TodoListSPA-OBO" `
-                                               -Oauth2AllowImplicitFlow $true `
-                                               -PublicClient $False
-
-
-   $currentAppId = $spaAadApplication.AppId
-   $spaServicePrincipal = New-AzureADServicePrincipal -AppId $currentAppId -Tags {WindowsAzureActiveDirectoryIntegratedApp}
-   Write-Host "Done."
-
-   # URL of the AAD application in the Azure portal
-   $spaPortalUrl = "https://portal.azure.com/#@"+$tenantName+"/blade/Microsoft_AAD_IAM/ApplicationBlade/appId/"+$spaAadApplication.AppId+"/objectId/"+$spaAadApplication.ObjectId
-   Add-Content -Value "<tr><td>spa</td><td>$currentAppId</td><td><a href='$spaPortalUrl'>TodoListSPA-OBO</a></td></tr>" -Path createdApps.html
-
-   $requiredResourcesAccess = New-Object System.Collections.Generic.List[Microsoft.Open.AzureAD.Model.RequiredResourceAccess]
-   # Add Required Resources Access (from 'spa' to 'service')
-   Write-Host "Getting access from 'spa' to 'service'"
-   $requiredPermissions = GetRequiredPermissions -applicationDisplayName "TodoListService-OBO" `
-                                                 -requiredDelegatedPermissions "user_impersonation";
-   $requiredResourcesAccess.Add($requiredPermissions)
-   Set-AzureADApplication -ObjectId $spaAadApplication.ObjectId -RequiredResourceAccess $requiredResourcesAccess
-   Write-Host "Granted."
 
    # Configure known client applications for service 
    Write-Host "Configure known client applications for the 'service'"
    $knowApplications = New-Object System.Collections.Generic.List[System.String]
 	$knowApplications.Add($clientAadApplication.AppId)
-	$knowApplications.Add($spaAadApplication.AppId)
    Set-AzureADApplication -ObjectId $serviceAadApplication.ObjectId -KnownClientApplications $knowApplications
    Write-Host "Configured."
 
@@ -294,15 +269,24 @@ Function ConfigureApplications
    Write-Host "Updating the sample code ($configFile)"
    ReplaceSetting -configFilePath $configFile -key "ida:Tenant" -newValue $tenantName
    ReplaceSetting -configFilePath $configFile -key "ida:ClientId" -newValue $clientAadApplication.AppId
-   ReplaceSetting -configFilePath $configFile -key "ida:RedirectUri" -newValue $clientAadApplication.ReplyUrls
-   ReplaceSetting -configFilePath $configFile -key "todo:TodoListResourceId" -newValue $serviceAadApplication.IdentifierUris
+   ReplaceSetting -configFilePath $configFile -key "todo:TodoListScope" -newValue @("https://" + $tenantName + "/TodoListService-OBO/.default")
    ReplaceSetting -configFilePath $configFile -key "todo:TodoListBaseAddress" -newValue $serviceAadApplication.HomePage
 
    # Update config file for 'spa'
    $configFile = $pwd.Path + "\..\TodoListSPA\appconfig.js"
    Write-Host "Updating the sample code ($configFile)"
-   $dictionary = @{ "tenant" = $tenantName;"clientId" = $spaAadApplication.AppId;"redirectUri" = $spaAadApplication.HomePage;"resourceId" = $serviceAadApplication.IdentifierUris;"resourceBaseAddress" = $serviceAadApplication.HomePage };
+   $dictionary = @{ "tenant" = $tenantName;"clientId" = $clientAadApplication.AppId;"redirectUri" = $clientAadApplication.HomePage;"resourceId" = $serviceAadApplication.IdentifierUris;"resourceBaseAddress" = $serviceAadApplication.HomePage };
    UpdateTextFile -configFilePath $configFile -dictionary $dictionary
+
+   Write-Host "" 
+   Write-Host -ForegroundColor Green "------------------------------------------------------------------------------------------------" 
+   Write-Host "IMPORTANT: Please follow the instructions below to complete a few manual step(s) in the Azure portal":
+   Write-Host "- For 'service'"
+   Write-Host "  - Navigate to '$clientPortalUrl'"
+   Write-Host "  - Navigate to the Authentication tab"
+   Write-Host "  - Change the 'TYPE' of 'https://localhost:44377' from 'Public client (mobile & desktop)' to 'Web' in the Redirect URLs !" -ForegroundColor Red 
+   Write-Host -ForegroundColor Green "------------------------------------------------------------------------------------------------" 
+
    Add-Content -Value "</tbody></table></body></html>" -Path createdApps.html
 
   }

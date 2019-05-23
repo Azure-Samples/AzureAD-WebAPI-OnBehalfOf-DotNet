@@ -1,5 +1,4 @@
 ﻿using Microsoft.Identity.Client;
-using Microsoft.Owin.Security.DataProtection;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -7,27 +6,11 @@ using System.Data.Entity;
 using System.Data.Entity.Infrastructure;
 using System.Linq;
 using System.Security.Claims;
-using System.Text;
-using System.Threading.Tasks;
-using TodoListService.Utils;
+using System.Web;
+using TodoListService.DAL;
 
-namespace TodoListService.DAL
+namespace TodoListService.Utils
 {
-    public class PerWebUserCache
-    {
-        [Key]
-        public int EntryId { get; set; }
-        public string WebUserUniqueId { get; set; }
-        public byte[] CacheBits { get; set; }
-        public DateTime LastWrite { get; set; }
-		
-		/// <summary>
-		/// Provided here as a precaution against concurrent updates by multiple threads.
-		/// </summary>
-		[Timestamp]
-		public byte[] RowVersion { get; set; }
-	}
-
 	/// <summary>
 	/// This is a MSAL's TokenCache implementation for one user. It uses Sql server as a backend store and uses the Entity Framework to read and write to that database.
 	/// </summary>
@@ -213,5 +196,20 @@ namespace TodoListService.DAL
 			return this.TokenCacheDb.PerUserCacheList.Where(c => c.WebUserUniqueId == userId)
 				.OrderByDescending(d => d.LastWrite);
 		}
+	}
+
+	public class PerWebUserCache
+	{
+		[Key]
+		public int EntryId { get; set; }
+		public string WebUserUniqueId { get; set; }
+		public byte[] CacheBits { get; set; }
+		public DateTime LastWrite { get; set; }
+
+		/// <summary>
+		/// Provided here as a precaution against concurrent updates by multiple threads.
+		/// </summary>
+		[Timestamp]
+		public byte[] RowVersion { get; set; }
 	}
 }

@@ -79,6 +79,7 @@ namespace TodoListClient
 			//Hooking our file cache into the UserTokenCache
 			TokenCacheHelper.EnableSerialization(_app.UserTokenCache);
 
+			//Retrieve the existing data from the database
 			GetTodoList();
 		}
 

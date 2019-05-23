@@ -3,10 +3,10 @@
   This section describes the Azure AD  Applications to configure, and their dependencies
   */
   "Sample": {
-    "Title": "Calling a downstream web API from a web API using Azure AD",
+    "Title": "Calling a downstream web API from another web API in Microsoft identity platform using the On-Behalf-Of flow",
     "Level": 400,
-    "Client": ".NET Framework 4.5 Console, JavaScript SPA",
-    "Service": "ASP.NET Web API"
+    "Client": ".NET Framework Desktop, JavaScript SPA",
+    "Service": "ASP.NET Web API, Microsoft Graph API"
   },
   "AADApps": [
     {
@@ -22,43 +22,20 @@
         }
       ]
     },
-    {
-      "Id": "client",
-      "Name": "TodoListClient-OBO",
-      "IsPublicClient": true,
-      "RequiredResourcesAccess": [
-        {
-          "Resource": "service",
-          "DelegatedPermissions": [ "user_impersonation" ]
-        }
-      ]
-    },
-    {
-      "Id": "spa",
-      "Name": "TodoListSPA-OBO",
-      "IsPublicClient": false,
-      "HomePage": "http://localhost:16969/",
-      "AllowImplicitFlow": true,
-      "RequiredResourcesAccess": [
-        {
-          "Resource": "service",
-          "DelegatedPermissions": [ "user_impersonation" ]
-        }
-      ]
-    }
+		{
+			"Id": "client",
+			"Name": "TodoListClient-OBO",
+			"IsPublicClient": true,
+			"HomePage": "http://localhost:16969/",
+			"AllowImplicitFlow": true,
+			"RequiredResourcesAccess": [
+				{
+					"Resource": "service",
+					"DelegatedPermissions": [ "user_impersonation" ]
+				}
+			]
+		}
   ],
-
-  /*
-    This section describes the users that need to be created to test the sample (if any) with their roles and groups
-  */
-  "Users": [
-    /*
-    {
-      "Alias": "user1"
-    }
-*/
-  ],
-
 
   /*
     This section describes how to update (the code in configuration files) from the apps coordinates

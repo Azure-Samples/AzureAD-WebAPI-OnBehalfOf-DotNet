@@ -3,29 +3,29 @@
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="utf-8" />
-    <link href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
     <title>Displays the todo list</title>
 </head>
 <body style="margin: 40px">
-    <button id="displayTodoList" type="button" class="btn btn-primary" onclick="displayTodoList()">Display the todo list</button>
-    <div id="errorMessage" class="text-danger"></div>
-    <div class="hidden">
-        <h3>Signed-in</h3>
-        <pre class="well" id="userInfo"></pre>
-    </div>
-    <div>
-        <p id="progressMessage"></p>
-    </div>
-    <div class="hidden">
-        <h3>Todo list</h3>
-        <pre class="well" id="apiResponse"></pre>
-    </div>
-    <button id="signOutButton" type="button" class="btn btn-primary hidden" onclick="signOut()">Sign out</button>
+	<button id="displayTodoList" type="button" class="btn btn-primary" onclick="displayTodoList()">Display the todo list</button>
+	<div id="errorMessage" class="text-danger"></div>
+	<div class="hidden">
+		<h3>Signed-in</h3>
+		<pre class="well" id="userInfo"></pre>
+	</div>
+	<div>
+		<p id="progressMessage"></p>
+	</div>
+	<div class="hidden">
+		<h3>Todo list</h3>
+		<pre class="well" id="apiResponse"></pre>
+	</div>
+	<button id="signOutButton" type="button" class="btn btn-primary hidden" onclick="signOut()">Sign out</button>
 
-    <script src="adal.js"></script>
-    <script type="text/javascript" src="appconfig.js"></script>
-
-    <script type="text/javascript" src="app.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/bluebird/3.3.4/bluebird.min.js" class="pre"></script>
+	<script src="https://secure.aadcdn.microsoftonline-p.com/lib/1.0.0/js/msal.min.js"></script>
+	<script type="text/javascript" src="appconfig.js"></script>
+	<script type="text/javascript" src="app.js"></script>
 
 </body>
 </html>
