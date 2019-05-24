@@ -38,6 +38,9 @@ namespace TodoListClient
 
 		private static readonly object FileLock = new object();
 
+		/// <summary>
+		/// Triggered right before MSAL needs to access the cache.
+		/// </summary>
 		private static void BeforeAccessNotification(TokenCacheNotificationArgs args)
 		{
 			lock (FileLock)
@@ -50,6 +53,9 @@ namespace TodoListClient
 			}
 		}
 
+		/// <summary>
+		/// Triggered right after MSAL accessed the cache.
+		/// </summary>
 		private static void AfterAccessNotification(TokenCacheNotificationArgs args)
 		{
 			// if the access operation resulted in a cache update
