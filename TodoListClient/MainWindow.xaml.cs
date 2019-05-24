@@ -266,7 +266,8 @@ namespace TodoListClient
 			AuthenticationResult result = null;
 			try
 			{
-				// Force a sign-in (PromptBehavior.Always), as the MSAL web browser might contain cookies for the current user
+				// Calling MSAL to acquire an access token for the specified scopes. 
+				// The interactive window will be parented to the specified window. The user will be required to select an account
 				result = await _app.AcquireTokenInteractive(Scopes)
 					.WithAccount(accounts.FirstOrDefault())
 					.WithPrompt(Prompt.SelectAccount)
