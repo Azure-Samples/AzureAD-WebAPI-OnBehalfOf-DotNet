@@ -36,9 +36,9 @@ The TodoListService uses a database to:
 
 ### Scenario. How the sample uses MSAL.NET (and MSAL.js)
 
-- `TodoListClient` uses  MSAL.NET to acquire a token for the user in order to call **TodoListService** Web API. For more information about how to acquire tokens interactively, see [Acquiring tokens interactively Public client application flows](https://github.com/AzureAD/azure-activedirectory-library-for-dotnet/wiki/Acquiring-tokens-interactively---Public-client-application-flows).
+- `TodoListClient` uses  MSAL.NET to acquire an access token for the user in order to call **TodoListService** Web API. For more information about how to acquire tokens interactively, see [Acquiring tokens interactively Public client application flows](https://github.com/AzureAD/azure-activedirectory-library-for-dotnet/wiki/Acquiring-tokens-interactively---Public-client-application-flows).
 - `TodoListSPA`, the single page application, uses [MSAL.js](https://github.com/AzureAD/microsoft-authentication-library-for-js) to acquire the access token to call **TodoListService** Web API.
-- Then `TodoListService` also uses MSAL.NET  to get a token to act on behalf of the user to call the Microsoft Graph. For details, see [Service to service calls on behalf of the user](https://github.com/AzureAD/azure-activedirectory-library-for-dotnet/wiki/Service-to-service-calls-on-behalf-of-the-user). It then decorates the todolist item entered by the user, with the First name and the Last name of the user. Below is a screen copy of what happens when the user named *automation service account* entered "item1" in the textbox.
+- Then `TodoListService` also uses MSAL.NET  to get an access token to act on behalf of the user to call the Microsoft Graph. For details, see [Service to service calls on behalf of the user](https://github.com/AzureAD/azure-activedirectory-library-for-dotnet/wiki/Service-to-service-calls-on-behalf-of-the-user). It then decorates the todolist item entered by the user, with the First name and the Last name of the user. Below is a screenshot of what happens when the user named *automation service account* entered "item1" in the textbox.
 
   ![Todo list client](./ReadmeFiles/TodoListClient.png)
 
@@ -184,11 +184,11 @@ Explore the sample by signing in, adding items to the To Do list, Clearing the c
 ## About the code
 
 There are many key points in this sample to make the [**On-Behalf-Of-(OBO) flow**](https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-on-behalf-of-flow) work properly and in this section we will explain these key points for each project.
-Though we have three applications in the solution, you will notice that we only registred two applications in Azure AD. This is because Azure AD now allows multiple types of applications, like in this case, a desktop and a javascript SPA application who share the same app registration in the Azure AD's app registration portal. 
+Though we have three applications in the solution, you will notice that we only registered two applications in Azure AD. This is because Azure AD now allows multiple types of applications, like in this case a desktop and a javascript SPA application, to share the same app registration in the Azure AD's app registration portal.
 
 ### TodoListClient
 
-This project represents the .NET desktop UI part of the flow, where users would sign-in and interact with the Web API. Also, this project is the consumer of information that is obtained from a downstream WebAPI. The API that this app calls also requests data from another API by using an access token obtained for the signed-in user using the **On-Behalf-Of (OBO) flow** . The first key point to pay attention is the `MainWindow` initialization. Here is the code snippet:
+This project represents the .NET desktop UI part of the flow, where users would sign-in and interact with the Web API (TodoListService). The API that this app calls ((TodoListService)) also requests data from another API (Microsoft Graph) by using an access token obtained for the signed-in user using the **On-Behalf-Of (OBO) flow** . The first key point to pay attention is the `MainWindow` initialization. Here is the code snippet:
 
 ```csharp
 private readonly IPublicClientApplication _app;
@@ -209,7 +209,7 @@ public MainWindow()
 
 Important things to notice:
 
-- We create an `IPublicClientApplication` using **MSAL Build Pattern** passing the `clientId` and `authority` in the builder. This `IPublicClientApplication` will be responsible of acquiring access tokens or id tokens later in the code.
+- We create an `IPublicClientApplication` using **MSAL Build Pattern** passing the `clientId` and `authority` in the builder. This `IPublicClientApplication` will be responsible of acquiring access tokens later in the code.
 - `IPublicClientApplication` also has a token cache, that will cache [access tokens](https://docs.microsoft.com/en-us/azure/active-directory/develop/access-tokens) and [refresh tokens](https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-auth-code-flow#refresh-the-access-token) for the signed-in user. This is done so that the application can fetch access tokens after they have expired without prompting the user to sign-in again.
 - Our `UserTokenCache` implementation uses the local file system for caching. Other popular options for caching tokens are `Database` or `Distributed InMemory cache`.
 
@@ -234,11 +234,11 @@ Important things to notice:
 
 - The scope [`.default`](https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-permissions-and-consent#the-default-scope) is a built-in scope for every application that refers to the static list of permissions configured on the application registration. In our scenario here, it enables the user to grant consent for permissions for both the Web API and the downstream API (Microsoft Graph). For example, the permissions for the Web API and the downstream API (Microsoft Graph) are listed below:
    - TodoListService-OBO
-     - demo_scope
+     - user_impersonation
    - Microsoft Graph
      - user.read
-- We you use the `.default` scope, the end user is prompted for a combined set of permissions that include both the **TodoListService-OBO** and **Microsoft Graph**.
-- We call the [AcquireTokenInteractive](https://github.com/AzureAD/microsoft-authentication-library-for-dotnet/wiki/Acquiring-tokens-interactively) which will present a window to the user to provide their credentials. When it acquires the access token, MSAL also saves this token in its token cache. When any code in the rest of the project tries to acquire an access token for the Web API with the same scope `.default`, MSAL will return the cached token.
+- When you use the `.default` scope, the end user is prompted for a combined set of permissions that include scopes from both the **TodoListService-OBO** and **Microsoft Graph**.
+- We call the [AcquireTokenInteractive](https://github.com/AzureAD/microsoft-authentication-library-for-dotnet/wiki/Acquiring-tokens-interactively) which will present a window to the user to provide their credentials. When it acquires the access token, MSAL also saves this token in its token cache.
 
 #### Add Todo Item
 
@@ -294,12 +294,11 @@ else
 Important things to notice:
 
 - After the **SignIn**, the user token will be cached and it can be acquired again by calling [AcquireTokenSilent](https://docs.microsoft.com/en-us/dotnet/api/microsoft.identity.client.iclientapplicationbase.acquiretokensilentasync?view=azure-dotnet).
-- `MsalUiRequiredException` will be thrown if there is no token for that user with the specified scope in the cache, or it got expired. This case requires the user to **SignIn** again.
-- Attaching the access token in the HTTP header as `Bearer` is mandatory when using [**On-Behalf-Of (OBO) flow**](https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-on-behalf-of-flow).
+- `MsalUiRequiredException` will be thrown if there is no token for that user with the specified scope in the cache, or it got expired. This case requires the user to **Sign-In** again.
 
 ### TodoListService
 
-The **TodoListService** is our Web API project that will make a call to the downstream **Microsoft Graph API** using an access token obtained via the [**On-Behalf-Of (OBO) flow**](https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-on-behalf-of-flow). The client that called **TodoListService**, sends a `Bearer` token on the HTTP header and this token will be used to impersonate the user and acquire a proper token for **Microsoft Graph API**.
+The **TodoListService** is our Web API project that will make a call to the downstream **Microsoft Graph API** using an access token obtained via the [**On-Behalf-Of (OBO) flow**](https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-on-behalf-of-flow). The client that called **TodoListService**, sends a `Bearer` token on the HTTP header and this token will be used to impersonate the user and acquire another acess token for **Microsoft Graph API**.
 
 The first key point to pay attention in this project is the `Startup` configuration:
 
@@ -321,13 +320,13 @@ public void ConfigureAuth(IAppBuilder app)
 
 Important things to notice:
 
-- Notice that we are setting `SaveSigninToken` to `true` on the `TokenValidationParameters`. This is essential to get the `Bearer` token from the HTTP header using the identity bootstrap context: `ClaimsPrincipal.Current.Identities.First().BootstrapContext`
+- Notice that we are setting `SaveSigninToken` to `true` on the `TokenValidationParameters`. This is essential to get the `Bearer` token from the HTTP header later, using the identity bootstrap context: `ClaimsPrincipal.Current.Identities.First().BootstrapContext`
 
 #### Call Graph API On Behalf Of User
 
 The logic to call **Microsoft Graph** on behalf of a user is inside the method `CallGraphAPIOnBehalfOfUser`. In this sample, we are getting the user's first name and last name and adding them in the `Todo's` title.
 
-The one thing that you will notice is that we are using a different type of token cache provider, which cache tokens in a SQL Server database. It is incapsulated in the `MSALPerUserSqlTokenCacheProvider` class.
+The one thing that you will notice is that we are using a different type of token cache provider in the Web API, which caches tokens in a SQL Server database. The implementation of this caching mechanism is incapsulated in the `MSALPerUserSqlTokenCacheProvider` class.
 
 ```csharp
 private async Task<UserProfile> CallGraphAPIOnBehalfOfUser()
@@ -383,7 +382,7 @@ private async Task<UserProfile> CallGraphAPIOnBehalfOfUser()
 Important things to notice:
 
 - We are using the scope `user.read` to get the user's profile on **Microsoft Graph**.
-- The `ConfidentialClientApplication` is built using the **Build Patten** introduced on MSAL v3.x, passing the `clientId`, `authority`, `appKey` and `redirectUri` on the builder. All of these values are related to the **TodoListService**. We don't send anything related to the **TodoListClient** application here.
+- The `ConfidentialClientApplication` is built using the **Build pattern** introduced in MSAL v3.x, passing the `clientId`, `authority`, `appKey` and `redirectUri` to the builder. All of these values are related to the **TodoListService**. We don't use anything related to the **TodoListClient** application here.
 - We hook the `ConfidentialClientApplication` `UserTokenCache` on our `MSALPerUserSqlTokenCacheProvider`, so we can store the cache on the database. Other alternatives for cache storage could be `InMemory` or `Session`.
 - We instantiate a `UserAssertion` using the `Bearer` token sent by the client and `urn:ietf:params:oauth:grant-type:jwt-bearer` as assertion type ([read more here](https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-on-behalf-of-flow)). This class represents the credential of the user being impersonated.
 - The method `AcquireTokenOnBehalfOf` will try to get a token for the impersonated user. If all the validations pass and the impersonated user have consented the requested scope (`user.read` on our sample), an access token will be returned and be used on **Microsoft Graph** request **on behalf on the user**.
